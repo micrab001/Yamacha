@@ -48,7 +48,7 @@ link = "http://192.168.50.156/YamahaExtendedControl"
 #
 # # "power": "standby"
 #
-link += "/v2/system/getFeatures"
+link += "/v2/netusb/getListInfo?input=server&index=0&size=8&lang=ru"
 responce = requests.get(link, timeout=10)
 if responce.status_code == 200:
 

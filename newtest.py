@@ -48,13 +48,18 @@ link = "http://192.168.50.156/YamahaExtendedControl"
 #
 # # "power": "standby"
 #
-link += "/v2/netusb/getListInfo?input=server&index=0&size=8&lang=ru"
+link += "/v2/system/getFeatures"
 responce = requests.get(link, timeout=10)
 if responce.status_code == 200:
-
+    pass
     pprint.pprint(responce.json())
 else:
     print("Сбой, ответ: ", responce)
+
+dev_inp_list=[]
+for el in responce.json()["system"]["input_list"]:
+    dev_inp_list.append(el["id"])
+print(dev_inp_list)
 
 
 # link = "http://192.168.50.156"

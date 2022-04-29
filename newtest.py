@@ -48,18 +48,19 @@ link = "http://192.168.50.156/YamahaExtendedControl"
 #
 # # "power": "standby"
 #
-link += "/v2/system/getFeatures"
+# link1 = link + "/v2/main/setSoundProgram?program=surr_decoder"
+# responce = requests.get(link1, timeout=10)
+link += "/v2/main/setSurroundDecoderType?type=dolby_pl2x_music"
 responce = requests.get(link, timeout=10)
 if responce.status_code == 200:
-    pass
     pprint.pprint(responce.json())
 else:
     print("Сбой, ответ: ", responce)
 
-dev_inp_list=[]
-for el in responce.json()["system"]["input_list"]:
-    dev_inp_list.append(el["id"])
-print(dev_inp_list)
+# dev_inp_list=[]
+# for el in responce.json()["system"]["input_list"]:
+#     # dev_inp_list.append(el)
+#     print(el)
 
 
 # link = "http://192.168.50.156"

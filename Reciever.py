@@ -4,6 +4,8 @@ from devicedata import full_program_list, full_decoder_list
 from tkinter import ttk
 import requests
 import datetime
+from io import BytesIO
+from PIL import Image, ImageTk
 
 import json
 import pprint
@@ -14,8 +16,8 @@ volume_min = -80.5
 volume_step = 0.5
 volume_calc = 0
 scale_use = True # установка шкалы
-net_usb_list = ['airplay', 'mc_link', 'server', 'net_radio', 'bluetooth', 'usb']
-chk_file = False
+net_usb_list = ['airplay', 'mc_link', 'server', 'net_radio', 'bluetooth', 'usb'] # что доступно из входов для выбора ресурсов
+chk_file = False # для записи пометки в файле истории проигрывания по кнопке чек
 last_play = "" # сделай чтение файла, если есть
 
 dev_url = "http://192.168.50.156"
@@ -42,12 +44,22 @@ def device_connect(add_link):
 
 
 def show_time(sec):
+    """вывод времени на входе целое число в секундах на выходе строка вида чч:мм:сс"""
     s = sec % 60
     sec -= s
     m = sec // 60 % 60
     h = sec // 60 - m
     h = h // 60
     return f"{str(h).zfill(2)}:{str(m).zfill(2)}:{str(s).zfill(2)}"
+
+
+def dec_in_doble(n):
+    """перевод десятичного (на входе) в двоичное (на выходе словари по битам) """
+    attr_in_double_sys = []
+    while n > 0:
+        attr_in_double_sys.append(n % 2)
+        n = n // 2
+    return attr_in_double_sys
 
 
 wind = tk.Tk()
@@ -140,11 +152,125 @@ def btn_input_select(event):
     device_connect(f"/v2/main/prepareInputChange?input={dev_input_now.get()}")
     device_connect(f"/v2/main/setInput?input={dev_input_now.get()}")
 
+def wind_list_get_spisok():
+    index_Start_in_list = 0
+    max_line = 8
+    list_info = []
+    while (max_line - index_Start_in_list) >= 0:
+        responce = device_connect(f"/v2/netusb/getListInfo?input=server&index={index_Start_in_list}&size=8&lang=ru")
+        if responce != cod_error:
+            index_Start_in_list += 8
+            max_line = responce.json()["max_line"]
+            for i in range(len(responce.json()["list_info"])):
+                list_info_tmp = responce.json()["list_info"][i]
+                list_info_tmp["attribute"] = dec_in_doble(list_info_tmp["attribute"])
+                list_info.append(list_info_tmp)
+    if responce != cod_error:
+        menu_name = responce.json()["menu_name"]
+        menu_layer = responce.json()["menu_layer"]
+    else:
+        menu_name = ""
+        menu_layer = 0
+
+    for el in list_info:
+        print(el)
+    return (menu_name, list_info, menu_layer)
+
+
+def scale_image(picture_in, width=200, height=200):
+    w, h = picture_in.size
+    if w > width or h > height:
+        max_size = (width, height)
+        picture_in.thumbnail(max_size) #, Image.ANTIALIAS)
+    return picture_in
+
+def btn_input_list_clc():
+
+
+    def show_picture(event):
+        # nonlocal spisok_picture, frame_spisok
+        frame_picture.configure(text=choices[spisok.curselection()[0]])
+        if full_list[spisok.curselection()[0]]['attribute'][1] == 1:
+            btn_sel.configure(text="Открыть")
+        elif full_list[spisok.curselection()[0]]['attribute'][2] == 1:
+            btn_sel.configure(text="Играть")
+        else:
+            btn_sel.configure(text="Выбрать")
+        if full_list[spisok.curselection()[0]]['thumbnail'] != "":
+            image_bite = requests.get(full_list[spisok.curselection()[0]]['thumbnail'], timeout=10)
+            print(f"запрос {image_bite.url} ответ: {image_bite.status_code}")
+            pil_image = Image.open(BytesIO(image_bite.content))
+            image = ImageTk.PhotoImage(scale_image(pil_image))
+            # label.config(image=image, text='')
+            # spisok_image.configure(data=image_bite.content)
+            spisok_picture.configure(image=image, text="")
+            spisok_picture.image = image
+        else:
+            spisok_picture.configure(image="")
+
+    wind_list = tk.Toplevel(wind)
+    wind_list.title("Выбор ресурса для проигрывания")
+    wind_list.geometry(f'{min_size_w+50}x{min_size_h-20}+{wind.winfo_x() + 10}+{wind.winfo_y() + 10}')  # положение окна на 10 точек смещения от основного окна
+    wind_list.minsize(min_size_w+50, min_size_h-20)
+    wind_name, full_list, menu_level = wind_list_get_spisok()
+    wind_list.columnconfigure(0, weight=1)
+    wind_list.rowconfigure(1, weight=1)
+    frame_spisok = ttk.Labelframe(wind_list, text=wind_name)
+    frame_spisok.grid(column=0, row=0, sticky="nesw")
+    frame_spisok.columnconfigure(0, weight=1)
+    # frame_spisok.rowconfigure(0, weight=1)
+    choices = [el['text'] for el in full_list]
+    choicesvar = tk.StringVar(value=choices)
+    spisok = tk.Listbox(frame_spisok, height=20 , listvariable=choicesvar)
+    spisok.grid(column=0, row=0, sticky="nesw")
+    vert_scroll = tk.Scrollbar(frame_spisok, orient=tk.VERTICAL, command=spisok.yview)
+    vert_scroll.grid(column=1, row=0, sticky="ns")
+    spisok['yscrollcommand'] = vert_scroll.set
+    hor_scroll = tk.Scrollbar(frame_spisok, orient=tk.HORIZONTAL, command=spisok.xview)
+    hor_scroll.grid(column=0, row=1, sticky="we")
+    spisok['xscrollcommand'] = hor_scroll.set
+    frame_picture = ttk.Labelframe(wind_list, text=wind_name, width=200, height=200)
+    frame_picture.grid(column=0, row=1, sticky="nesw")
+    frame_picture.columnconfigure(0, weight=1)
+    frame_picture.rowconfigure(0, weight=1)
+    # spisok_image = tk.PhotoImage()
+    spisok_picture_info = tk.StringVar()
+    spisok_picture = tk.Label(frame_picture)
+    spisok_picture.grid(row=0, column=0, sticky="nswe", padx=3)
+    spisok.bind('<<ListboxSelect>>', show_picture)
+    frame_buttons = ttk.Labelframe(wind_list, text='Функции:')
+    frame_buttons.columnconfigure(0, weight=1)
+    frame_buttons.columnconfigure(1, weight=1)
+    frame_buttons.grid(column=0, row=2, sticky="nesw", padx=3)
+    btn_sel = tk.Button(frame_buttons, text="Выбрать")
+    btn_sel.grid(row=0, column=0, sticky="nswe", padx=3)
+    btn_can = tk.Button(frame_buttons)
+    if menu_level == 0:
+        btn_can.configure(text="Закрыть")
+    else:
+        btn_can.configure(text="Назад")
+    btn_can.grid(row=0, column=1, sticky="nswe", padx=3)
+
+
+
+    # frame_spisok.configure(text="test")
+
+
+
+    # эти три строчки делают окно модальным, их надо поместить вниз(в конце) команд
+    wind_list.grab_set()
+    wind_list.focus_set()
+    wind_list.wait_window()
+
+
+    print("OK")
+
 
 loc_frame_row = 1
-loc_frame_col = 1
+loc_frame_col = 3
 frame_input = ttk.Labelframe(wind, text='Input (вход):', width=min_size_w-10)
-frame_input.columnconfigure(0, minsize = min_size_w-100, weight=1)
+frame_input.columnconfigure(0, minsize = (min_size_w-10)//loc_frame_col//4, weight=3)
+frame_input.columnconfigure(1, minsize = (min_size_w-10)//loc_frame_col//4, weight=1)
 frame_input.grid(column=0, row=level_row, sticky="nesw", padx=3)
 
 device_parametrs = device_connect("/v2/system/getFeatures")
@@ -159,6 +285,9 @@ dev_input_now.set(dev_inp_list[0])
 btn_input = ttk.Combobox(frame_input, values=dev_inp_list, textvariable=dev_input_now, state="readonly") #, width=-(min_size_w-50))
 btn_input.grid(column=0, sticky="nesw", padx=3)
 btn_input.bind("<<ComboboxSelected>>", btn_input_select)
+btn_input_list = tk.Button(frame_input, text="выбор", command=btn_input_list_clc)
+btn_input_list.grid(column=1, row=0, sticky="nesw", padx=3)
+
 level_row += loc_frame_row
 
 def btn_sound_program_select(event):
@@ -274,7 +403,8 @@ level_row += loc_frame_row
 
 def btn_chk_clc():
     global chk_file
-    chk_file = True
+    if dev_input_now.get() in net_usb_list:
+        chk_file = True
 
 
 loc_frame_row = 1
@@ -331,6 +461,7 @@ def chk_window():
                 btn_control_stop.config(state=tk.NORMAL)
                 btn_control_pause.config(state=tk.NORMAL)
                 btn_control_forward.config(state=tk.NORMAL)
+                # btn_input_list.config(state=tk.NORMAL)
 
             case "standby":
                 btn_power.config(image=btn_power_photo_off)
@@ -348,7 +479,7 @@ def chk_window():
                 btn_control_stop.config(state=tk.DISABLED)
                 btn_control_pause.config(state=tk.DISABLED)
                 btn_control_forward.config(state=tk.DISABLED)
-
+                # btn_input_list.config(state=tk.DISABLED)
         if mute:
             btn_volume_mute.config(image=btn_volume_photo_mute_on)
         else:
@@ -359,7 +490,8 @@ def chk_window():
 
 def dev_playinfo():
     global playback, last_play, chk_file
-    if dev_input_now.get() in net_usb_list:
+    if dev_input_now.get() in net_usb_list and power == "on":
+        btn_input_list.config(state=tk.NORMAL)
         responce = device_connect("/v2/netusb/getPlayInfo")
         if responce != cod_error:
             play_info = responce.json()
@@ -375,7 +507,7 @@ def dev_playinfo():
             now_play = f'{dev_input_now.get()}\t{play_info["artist"]}\t{play_info["album"]}\t{play_info["track"]}'
             if now_play != last_play:
                 try:
-                    with open("play_history.txt", "a") as file_out:
+                    with open("play_history.txt", "a", errors="replace") as file_out: #encoding="utf8"
                         if chk_file:
                             last_play += "\tпроверить"
                             chk_file = False
@@ -384,6 +516,10 @@ def dev_playinfo():
                         last_play = now_play
                 except PermissionError:
                     messagebox.showinfo(title="Ошибка записи истории!", message=f"Закройте файл play_history.txt!")
+                # except UnicodeEncodeError:
+    else:
+        btn_input_list.config(state=tk.DISABLED)
+        text_info.set("")
 
 
             # print(info_str)

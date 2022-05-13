@@ -18,7 +18,16 @@ volume_calc = 0
 scale_use = True # установка шкалы
 net_usb_list = ['airplay', 'mc_link', 'server', 'net_radio', 'bluetooth', 'usb'] # что доступно из входов для выбора ресурсов
 chk_file = False # для записи пометки в файле истории проигрывания по кнопке чек
-last_play = "" # сделай чтение файла, если есть
+
+try:
+    with open("play_history.txt") as his_file:
+        for line in his_file:
+            pass
+        last_play = line
+        last_play = last_play[20:last_play.rfind("\t")]
+except FileNotFoundError:
+    last_play = ""
+last_play_pic = ""
 
 dev_url = "http://192.168.50.156"
 
@@ -67,10 +76,11 @@ wind.title("Yamaha RX-V485")
 wind_photo = tk.PhotoImage(file = "device.png")
 wind.iconphoto(False, wind_photo)
 min_size_w = 300
-min_size_h = 650
-wind.geometry(f"{min_size_w}x{min_size_h}+156+100")
+min_size_h = 750
+wind.geometry(f"{min_size_w}x{min_size_h}+156+50")
 wind.minsize(min_size_w, min_size_h)
 wind.columnconfigure(0, minsize = min_size_w-4, weight=0)
+wind.resizable(False, True)
 
 level_row = 0
 
@@ -148,33 +158,7 @@ btn_volume_mute.grid(row = 1, column = 2, sticky="nesw", padx = 3)
 level_row += loc_frame_row
 
 
-def btn_input_select(event):
-    device_connect(f"/v2/main/prepareInputChange?input={dev_input_now.get()}")
-    device_connect(f"/v2/main/setInput?input={dev_input_now.get()}")
 
-def wind_list_get_spisok():
-    index_Start_in_list = 0
-    max_line = 8
-    list_info = []
-    while (max_line - index_Start_in_list) >= 0:
-        responce = device_connect(f"/v2/netusb/getListInfo?input=server&index={index_Start_in_list}&size=8&lang=ru")
-        if responce != cod_error:
-            index_Start_in_list += 8
-            max_line = responce.json()["max_line"]
-            for i in range(len(responce.json()["list_info"])):
-                list_info_tmp = responce.json()["list_info"][i]
-                list_info_tmp["attribute"] = dec_in_doble(list_info_tmp["attribute"])
-                list_info.append(list_info_tmp)
-    if responce != cod_error:
-        menu_name = responce.json()["menu_name"]
-        menu_layer = responce.json()["menu_layer"]
-    else:
-        menu_name = ""
-        menu_layer = 0
-
-    for el in list_info:
-        print(el)
-    return (menu_name, list_info, menu_layer)
 
 
 def scale_image(picture_in, width=200, height=200):
@@ -185,28 +169,126 @@ def scale_image(picture_in, width=200, height=200):
     return picture_in
 
 def btn_input_list_clc():
+    """ подпрограмма для создания и работы с окном выбора элементов из источника проигрывания"""
+
+    max_line = 0  # для определения кол-ва элементов
+
+    def wind_list_get_spisok():
+        """ запрос к устройству и создание списка всех элементов в выбранном каталоге"""
+        nonlocal max_line
+        index_Start_in_list = 0
+        max_line = 8
+        list_info = []
+        while (max_line - index_Start_in_list) >= 0:
+            responce = device_connect(f"/v2/netusb/getListInfo?input=server&index={index_Start_in_list}&size=8&lang=ru")
+            if responce != cod_error:
+                index_Start_in_list += 8
+                max_line = responce.json()["max_line"]
+                for i in range(len(responce.json()["list_info"])):
+                    list_info_tmp = responce.json()["list_info"][i]
+                    list_info_tmp["attribute"] = dec_in_doble(list_info_tmp["attribute"])
+                    list_info.append(list_info_tmp)
+        if responce != cod_error:
+            menu_name = responce.json()["menu_name"]
+            menu_layer = responce.json()["menu_layer"]
+            max_line = responce.json()["max_line"]
+        else:
+            menu_name = ""
+            menu_layer = 0
+            max_line = 0
+
+        for el in list_info:
+            print(el)
+
+        return (menu_name, list_info, menu_layer)
 
 
     def show_picture(event):
+        """ показ картинки каталога в окне для выбираемой позиции"""
         # nonlocal spisok_picture, frame_spisok
-        frame_picture.configure(text=choices[spisok.curselection()[0]])
-        if full_list[spisok.curselection()[0]]['attribute'][1] == 1:
-            btn_sel.configure(text="Открыть")
-        elif full_list[spisok.curselection()[0]]['attribute'][2] == 1:
-            btn_sel.configure(text="Играть")
+        if spisok.curselection() != ():
+            frame_picture.configure(text=choices[spisok.curselection()[0]])
+            if full_list[spisok.curselection()[0]]['attribute'][1] == 1:
+                btn_sel.configure(text="Открыть")
+            elif full_list[spisok.curselection()[0]]['attribute'][2] == 1:
+                btn_sel.configure(text="Играть")
+            else:
+                btn_sel.configure(text="Выбрать")
+            if full_list[spisok.curselection()[0]]['thumbnail'] != "" and full_list[spisok.curselection()[0]]['attribute'][1] == 1:
+                image_bite = requests.get(full_list[spisok.curselection()[0]]['thumbnail'], timeout=10)
+                print(f"запрос {image_bite.url} ответ: {image_bite.status_code}")
+                if image_bite.status_code == 200:
+                    pil_image = Image.open(BytesIO(image_bite.content))
+                    image = ImageTk.PhotoImage(scale_image(pil_image))
+                    # label.config(image=image, text='')
+                    # spisok_image.configure(data=image_bite.content)
+                    spisok_picture.configure(image=image, text="")
+                    spisok_picture.image = image # строка чтобы картинка не улетала в мусор после завершения подпрограммы
+            else:
+                spisok_picture.configure(image="")
         else:
-            btn_sel.configure(text="Выбрать")
-        if full_list[spisok.curselection()[0]]['thumbnail'] != "":
-            image_bite = requests.get(full_list[spisok.curselection()[0]]['thumbnail'], timeout=10)
-            print(f"запрос {image_bite.url} ответ: {image_bite.status_code}")
-            pil_image = Image.open(BytesIO(image_bite.content))
-            image = ImageTk.PhotoImage(scale_image(pil_image))
-            # label.config(image=image, text='')
-            # spisok_image.configure(data=image_bite.content)
-            spisok_picture.configure(image=image, text="")
-            spisok_picture.image = image
-        else:
+            frame_picture.configure(text=wind_name)
             spisok_picture.configure(image="")
+
+    def wind_list_update(wind_name, full_list, menu_layer):
+        """обновление списка в виджете и вывод его на экран"""
+        nonlocal choices, max_line
+        wind_name = wind_name + " - элементов: " + str(max_line)
+        frame_spisok.configure(text=wind_name)
+        choices = [el['text'] for el in full_list]
+        choicesvar.set(choices)
+        for i in range(len(choices)):
+            if full_list[i]['attribute'][1] == 1:
+                spisok.itemconfigure(i, background='#f0f0ff')
+            else:
+                spisok.itemconfigure(i, background="white")
+        spisok.selection_clear(0, len(choices))
+
+    def btn_can_clc():
+        nonlocal full_list, wind_name, menu_level
+        if menu_level == 0:
+            wind_list.destroy()
+        else:
+            responce = device_connect("/v2/netusb/setListControl?list_id=main&type=return")
+            if responce != cod_error:
+                wind_name, full_list, menu_level = wind_list_get_spisok()
+                wind_list_update(wind_name, full_list, menu_level)
+            if menu_level == 0:
+                btn_can.configure(text="Закрыть")
+            else:
+                btn_can.configure(text="Назад")
+            show_picture("")
+
+    def btn_sel_clc_dub(event):
+        btn_sel_clc()
+
+
+    def btn_sel_clc():
+        nonlocal full_list, wind_name, menu_level
+        if spisok.curselection() == ():
+            messagebox.showinfo(title="Ничего не выбрано!", message="Сначала выберите строчку, а потом нажимайте кнопку Открыть/Играть или нажмите кнопку Назад/Закрыть")
+            return
+        if full_list[spisok.curselection()[0]]['attribute'][1] == 1:
+            responce = device_connect(f"/v2/netusb/setListControl?list_id=main&type=select&index={spisok.curselection()[0]}")
+            if responce != cod_error:
+                wind_name, full_list, menu_level = wind_list_get_spisok()
+                wind_list_update(wind_name, full_list, menu_level)
+        elif full_list[spisok.curselection()[0]]['attribute'][2] == 1:
+            # играть композицию
+            device_connect(f"/v2/netusb/setListControl?list_id=main&type=play&index={spisok.curselection()[0]}")
+            print("выбрана композиция")
+        else:
+            print("не открывается и не играет")
+            # btn_sel.configure(text="Выбрать")
+        print(menu_level)
+        if menu_level == 0:
+            btn_can.configure(text="Закрыть")
+        else:
+            btn_can.configure(text="Назад")
+
+
+    # "http://{host}/YamahaExtendedControl/v1/netusb/setListControl?list_id=main&type=select&index=1"
+
 
     wind_list = tk.Toplevel(wind)
     wind_list.title("Выбор ресурса для проигрывания")
@@ -229,22 +311,24 @@ def btn_input_list_clc():
     hor_scroll = tk.Scrollbar(frame_spisok, orient=tk.HORIZONTAL, command=spisok.xview)
     hor_scroll.grid(column=0, row=1, sticky="we")
     spisok['xscrollcommand'] = hor_scroll.set
+    wind_list_update(wind_name, full_list, menu_level)
     frame_picture = ttk.Labelframe(wind_list, text=wind_name, width=200, height=200)
     frame_picture.grid(column=0, row=1, sticky="nesw")
     frame_picture.columnconfigure(0, weight=1)
     frame_picture.rowconfigure(0, weight=1)
     # spisok_image = tk.PhotoImage()
-    spisok_picture_info = tk.StringVar()
+    # spisok_picture_info = tk.StringVar()
     spisok_picture = tk.Label(frame_picture)
     spisok_picture.grid(row=0, column=0, sticky="nswe", padx=3)
     spisok.bind('<<ListboxSelect>>', show_picture)
+    spisok.bind('<Double-1>', btn_sel_clc_dub)
     frame_buttons = ttk.Labelframe(wind_list, text='Функции:')
     frame_buttons.columnconfigure(0, weight=1)
     frame_buttons.columnconfigure(1, weight=1)
     frame_buttons.grid(column=0, row=2, sticky="nesw", padx=3)
-    btn_sel = tk.Button(frame_buttons, text="Выбрать")
+    btn_sel = tk.Button(frame_buttons, text="Выбрать", command=btn_sel_clc)
     btn_sel.grid(row=0, column=0, sticky="nswe", padx=3)
-    btn_can = tk.Button(frame_buttons)
+    btn_can = tk.Button(frame_buttons, command=btn_can_clc)
     if menu_level == 0:
         btn_can.configure(text="Закрыть")
     else:
@@ -257,14 +341,19 @@ def btn_input_list_clc():
 
 
 
-    # эти три строчки делают окно модальным, их надо поместить вниз(в конце) команд
-    wind_list.grab_set()
+    # эти пять строчек делают окно модальным, их надо поместить вниз(в конце) команд
+    wind_list.transient(wind)  # dialog window is related to main
+    wind_list.wait_visibility() # can't grab until window appears, so we wait
+    wind_list.grab_set() # ensure all input goes to our window
     wind_list.focus_set()
-    wind_list.wait_window()
-
+    wind_list.wait_window() # block until window is destroyed
 
     print("OK")
 
+
+def btn_input_select(event):
+    device_connect(f"/v2/main/prepareInputChange?input={dev_input_now.get()}")
+    device_connect(f"/v2/main/setInput?input={dev_input_now.get()}")
 
 loc_frame_row = 1
 loc_frame_col = 3
@@ -401,11 +490,22 @@ btn_info = tk.Label(frame_info, textvariable=text_info, justify=tk.LEFT, wraplen
 btn_info.grid(row=0, column=0, sticky="nsw", padx=3)
 level_row += loc_frame_row
 
+loc_frame_row = 1
+frame_picture_play = ttk.Labelframe(wind, text="Картинка", width=min_size_w-10)
+frame_picture_play.grid(column=0, row=level_row, sticky="nesw", padx=3)
+frame_picture_play.columnconfigure(0, weight=1)
+frame_picture_play.rowconfigure(0, weight=1)
+# picture_play_pic = tk.PhotoImage()
+# spisok_picture_info = tk.StringVar()
+picture_play = tk.Label(frame_picture_play)
+picture_play.grid(row=0, column=0, sticky="nswe", padx=3)
+level_row += loc_frame_row
+
+
 def btn_chk_clc():
     global chk_file
     if dev_input_now.get() in net_usb_list:
         chk_file = True
-
 
 loc_frame_row = 1
 loc_frame_col = 2
@@ -414,12 +514,12 @@ frame_func.columnconfigure(0, minsize = (min_size_w-10)//loc_frame_col, weight=1
 frame_func.grid(column=0, row=level_row, sticky="nesw", padx=3)
 btn_chk = tk.Button(frame_func, text="Чек", command=btn_chk_clc)
 btn_chk.grid(row=0, column=0, sticky="nsw", padx=3)
+level_row += loc_frame_row
 
 
 
 
 def chk_window():
-    # pass
     global power, volume, volume_calc, scale_use, actual_volume, mute, dev_input_now, sound_program, sound_program_now
     global sound_decoder, sound_decoder_now
     responce = device_connect("/v2/main/getStatus")
@@ -489,7 +589,7 @@ def chk_window():
         # print(actual_volume, volume, zone_status['surr_decoder_type'], sep="\n")
 
 def dev_playinfo():
-    global playback, last_play, chk_file
+    global playback, last_play, chk_file, last_play_pic
     if dev_input_now.get() in net_usb_list and power == "on":
         btn_input_list.config(state=tk.NORMAL)
         responce = device_connect("/v2/netusb/getPlayInfo")
@@ -504,11 +604,28 @@ def dev_playinfo():
             info_str += f"Играет: {show_time(play_info['play_time'])}"
             text_info.set(info_str)
             albumart_url = (dev_url + play_info["albumart_url"]) if play_info["albumart_url"] != "" else ""
+            if albumart_url != "" and last_play_pic != albumart_url:
+                image_bite_pic = requests.get(albumart_url, timeout=10)
+                print(f"запрос {image_bite_pic.url} ответ: {image_bite_pic.status_code}")
+                if image_bite_pic.status_code == 200:
+                    pil_image_pic = Image.open(BytesIO(image_bite_pic.content))
+                    image = ImageTk.PhotoImage(scale_image(pil_image_pic))
+                    # label.config(image=image, text='')
+                    # spisok_image.configure(data=image_bite.content)
+                    picture_play.configure(image=image)
+                    picture_play.image = image # строка чтобы картинка не улетала в мусор после завершения подпрограммы
+                else:
+                    picture_play.configure(image="")
+            elif albumart_url == "":
+                picture_play.configure(image="")
+            last_play_pic = albumart_url
             now_play = f'{dev_input_now.get()}\t{play_info["artist"]}\t{play_info["album"]}\t{play_info["track"]}'
             if now_play != last_play:
+                print("смена трека ", info_str)
+
                 try:
                     with open("play_history.txt", "a", errors="replace") as file_out: #encoding="utf8"
-                        if chk_file:
+                        if chk_file and last_play != "":
                             last_play += "\tпроверить"
                             chk_file = False
                             file_out.write(datetime.datetime.now().strftime("%d-%m-%Y\t%H:%M:%S\t") + last_play + "\n")

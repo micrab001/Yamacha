@@ -1,38 +1,33 @@
 import requests
 import pprint
-import tkinter as tk
+
+import os
+import tkinter
 from tkinter import ttk
-import time
 
-root=tk.Tk()
 
-ttk.Entry(root).grid()   # something to interact with
-max_val = 100
-step_cikl = 1
 
-def dismiss ():
-    dlg.grab_release()
-    dlg.destroy()
+class FoundAllFiles():
 
-def cikl():
-    for i in range(0, 100, step_cikl):
-        p.configure(value=i)
-        time.sleep(0.5)
-        p.update()
-        print(i)
 
-dlg = tk.Toplevel(root)
-p = ttk.Progressbar(dlg, orient=tk.HORIZONTAL, length=200, mode='determinate', maximum=max_val, value=0)
-p.grid()
-ttk.Button(dlg, text="Done", command=dismiss).grid()
-ttk.Button(dlg, text="Start", command=cikl).grid()
-dlg.protocol("WM_DELETE_WINDOW", dismiss) # intercept close button
-dlg.transient(root)   # dialog window is related to main
-dlg.wait_visibility() # can't grab until window appears, so we wait
-dlg.grab_set()        # ensure all input goes to our window
-dlg.wait_window()     # block until window is destroyed
 
-root.mainloop()
+    f_loc = r'C:\Users\micrab\AppData\Local\Temp\gen_py'
+    all_dir = os.listdir(f_loc)
+    if len(all_dir) != 0:
+        for f in all_dir:
+            if os.path.isfile(f_loc+chr(92)+f):
+                os.remove(f_loc+chr(92)+f)
+            else:
+                rmtree(f_loc+chr(92)+f)
+
+
+
+
+
+
+
+
+
 
 exit(0)
 

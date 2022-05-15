@@ -173,17 +173,32 @@ def btn_input_list_clc():
 
     max_line = 0  # для определения кол-ва элементов
 
+    def wind_dismiss():
+        """ перехват события нажатия на крестик и закрытие окна со снятием модальности"""
+        wind_list.grab_release()
+        wind_list.destroy()
+
     def wind_list_get_spisok():
         """ запрос к устройству и создание списка всех элементов в выбранном каталоге"""
         nonlocal max_line
         index_Start_in_list = 0
         max_line = 8
+        last_max_line = 0
         list_info = []
+        btn_sel.config(state=tk.DISABLED)
+        btn_can.configure(state=tk.DISABLED)
         while (max_line - index_Start_in_list) >= 0:
             responce = device_connect(f"/v2/netusb/getListInfo?input=server&index={index_Start_in_list}&size=8&lang=ru")
             if responce != cod_error:
                 index_Start_in_list += 8
                 max_line = responce.json()["max_line"]
+                if max_line != last_max_line:
+                    last_max_line = max_line
+                    process_bar.configure(maximum=max_line)
+                tmp_index = index_Start_in_list if (index_Start_in_list+8 <= max_line) else max_line
+                process_bar.configure(value=tmp_index)
+                process_bar.update()
+
                 for i in range(len(responce.json()["list_info"])):
                     list_info_tmp = responce.json()["list_info"][i]
                     list_info_tmp["attribute"] = dec_in_doble(list_info_tmp["attribute"])
@@ -197,8 +212,11 @@ def btn_input_list_clc():
             menu_layer = 0
             max_line = 0
 
-        for el in list_info:
-            print(el)
+        # for el in list_info:
+        #     print(el)
+
+        btn_sel.config(state=tk.NORMAL)
+        btn_can.configure(state=tk.NORMAL)
 
         return (menu_name, list_info, menu_layer)
 
@@ -216,7 +234,7 @@ def btn_input_list_clc():
                 btn_sel.configure(text="Выбрать")
             if full_list[spisok.curselection()[0]]['thumbnail'] != "" and full_list[spisok.curselection()[0]]['attribute'][1] == 1:
                 image_bite = requests.get(full_list[spisok.curselection()[0]]['thumbnail'], timeout=10)
-                print(f"запрос {image_bite.url} ответ: {image_bite.status_code}")
+                # print(f"запрос {image_bite.url} ответ: {image_bite.status_code}")
                 if image_bite.status_code == 200:
                     pil_image = Image.open(BytesIO(image_bite.content))
                     image = ImageTk.PhotoImage(scale_image(pil_image))
@@ -230,7 +248,7 @@ def btn_input_list_clc():
             frame_picture.configure(text=wind_name)
             spisok_picture.configure(image="")
 
-    def wind_list_update(wind_name, full_list, menu_layer):
+    def wind_list_update(wind_name, full_list, menu_level):
         """обновление списка в виджете и вывод его на экран"""
         nonlocal choices, max_line
         wind_name = wind_name + " - элементов: " + str(max_line)
@@ -243,21 +261,25 @@ def btn_input_list_clc():
             else:
                 spisok.itemconfigure(i, background="white")
         spisok.selection_clear(0, len(choices))
+        spisok.select_set(0)
+        spisok.see(0)
+        spisok.index(0)
+        spisok.activate(0)
+        if menu_level == 0:
+            btn_can.configure(text="Закрыть")
+        else:
+            btn_can.configure(text="Назад")
+        show_picture("")
 
     def btn_can_clc():
         nonlocal full_list, wind_name, menu_level
         if menu_level == 0:
-            wind_list.destroy()
+            wind_dismiss()
         else:
             responce = device_connect("/v2/netusb/setListControl?list_id=main&type=return")
             if responce != cod_error:
                 wind_name, full_list, menu_level = wind_list_get_spisok()
                 wind_list_update(wind_name, full_list, menu_level)
-            if menu_level == 0:
-                btn_can.configure(text="Закрыть")
-            else:
-                btn_can.configure(text="Назад")
-            show_picture("")
 
     def btn_sel_clc_dub(event):
         btn_sel_clc()
@@ -276,11 +298,13 @@ def btn_input_list_clc():
         elif full_list[spisok.curselection()[0]]['attribute'][2] == 1:
             # играть композицию
             device_connect(f"/v2/netusb/setListControl?list_id=main&type=play&index={spisok.curselection()[0]}")
-            print("выбрана композиция")
+            # print("выбрана композиция")
         else:
-            print("не открывается и не играет")
+            messagebox.showinfo(title="Ошибка!",
+                                message="Позиция не открывается и не играет, надо выбрать другую")
+            # print("не открывается и не играет")
             # btn_sel.configure(text="Выбрать")
-        print(menu_level)
+        # print(menu_level)
         if menu_level == 0:
             btn_can.configure(text="Закрыть")
         else:
@@ -294,14 +318,19 @@ def btn_input_list_clc():
     wind_list.title("Выбор ресурса для проигрывания")
     wind_list.geometry(f'{min_size_w+50}x{min_size_h-20}+{wind.winfo_x() + 10}+{wind.winfo_y() + 10}')  # положение окна на 10 точек смещения от основного окна
     wind_list.minsize(min_size_w+50, min_size_h-20)
-    wind_name, full_list, menu_level = wind_list_get_spisok()
+    wind_name = ""
+    full_list = []
+    menu_level = 0
     wind_list.columnconfigure(0, weight=1)
-    wind_list.rowconfigure(1, weight=1)
+    wind_list.rowconfigure(0, weight=0)
+    wind_list.rowconfigure(1, weight=0)
+    wind_list.rowconfigure(2, weight=0)
+    wind_list.rowconfigure(3, weight=0)
     frame_spisok = ttk.Labelframe(wind_list, text=wind_name)
-    frame_spisok.grid(column=0, row=0, sticky="nesw")
+    frame_spisok.grid(column=0, row=0, sticky="nesw", padx=3)
     frame_spisok.columnconfigure(0, weight=1)
     # frame_spisok.rowconfigure(0, weight=1)
-    choices = [el['text'] for el in full_list]
+    choices = "" # [el['text'] for el in full_list]
     choicesvar = tk.StringVar(value=choices)
     spisok = tk.Listbox(frame_spisok, height=20 , listvariable=choicesvar)
     spisok.grid(column=0, row=0, sticky="nesw")
@@ -311,9 +340,15 @@ def btn_input_list_clc():
     hor_scroll = tk.Scrollbar(frame_spisok, orient=tk.HORIZONTAL, command=spisok.xview)
     hor_scroll.grid(column=0, row=1, sticky="we")
     spisok['xscrollcommand'] = hor_scroll.set
-    wind_list_update(wind_name, full_list, menu_level)
+    frame_progress = ttk.Labelframe(wind_list, text="загрузка")
+    frame_progress.grid(column=0, row=1, sticky="ew", padx=3)
+    frame_progress.columnconfigure(0, weight=1)
+    # frame_progress.rowconfigure(0, weight=0)
+    process_bar = ttk.Progressbar(frame_progress, orient=tk.HORIZONTAL, length=200, mode='determinate', maximum=100, value=0)
+    process_bar.grid(column=0, row=0, sticky="nesw")
+
     frame_picture = ttk.Labelframe(wind_list, text=wind_name, width=200, height=200)
-    frame_picture.grid(column=0, row=1, sticky="nesw")
+    frame_picture.grid(column=0, row=2, sticky="nswe", padx=3)
     frame_picture.columnconfigure(0, weight=1)
     frame_picture.rowconfigure(0, weight=1)
     # spisok_image = tk.PhotoImage()
@@ -325,30 +360,31 @@ def btn_input_list_clc():
     frame_buttons = ttk.Labelframe(wind_list, text='Функции:')
     frame_buttons.columnconfigure(0, weight=1)
     frame_buttons.columnconfigure(1, weight=1)
-    frame_buttons.grid(column=0, row=2, sticky="nesw", padx=3)
+    frame_buttons.grid(column=0, row=3, sticky="nesw", padx=3)
     btn_sel = tk.Button(frame_buttons, text="Выбрать", command=btn_sel_clc)
     btn_sel.grid(row=0, column=0, sticky="nswe", padx=3)
-    btn_can = tk.Button(frame_buttons, command=btn_can_clc)
-    if menu_level == 0:
-        btn_can.configure(text="Закрыть")
-    else:
-        btn_can.configure(text="Назад")
+    btn_can = tk.Button(frame_buttons, text="Закрыть", command=btn_can_clc)
+    # if menu_level == 0:
+    #     btn_can.configure(text="Закрыть")
+    # else:
+    #     btn_can.configure(text="Назад")
     btn_can.grid(row=0, column=1, sticky="nswe", padx=3)
 
-
+    wind_name, full_list, menu_level = wind_list_get_spisok()
+    wind_list_update(wind_name, full_list, menu_level)
 
     # frame_spisok.configure(text="test")
 
 
-
     # эти пять строчек делают окно модальным, их надо поместить вниз(в конце) команд
+    wind_list.protocol("WM_DELETE_WINDOW", wind_dismiss)  # intercept close button
     wind_list.transient(wind)  # dialog window is related to main
     wind_list.wait_visibility() # can't grab until window appears, so we wait
     wind_list.grab_set() # ensure all input goes to our window
     wind_list.focus_set()
     wind_list.wait_window() # block until window is destroyed
 
-    print("OK")
+    # print("OK")
 
 
 def btn_input_select(event):
@@ -606,7 +642,7 @@ def dev_playinfo():
             albumart_url = (dev_url + play_info["albumart_url"]) if play_info["albumart_url"] != "" else ""
             if albumart_url != "" and last_play_pic != albumart_url:
                 image_bite_pic = requests.get(albumart_url, timeout=10)
-                print(f"запрос {image_bite_pic.url} ответ: {image_bite_pic.status_code}")
+                # print(f"запрос {image_bite_pic.url} ответ: {image_bite_pic.status_code}")
                 if image_bite_pic.status_code == 200:
                     pil_image_pic = Image.open(BytesIO(image_bite_pic.content))
                     image = ImageTk.PhotoImage(scale_image(pil_image_pic))
@@ -621,7 +657,7 @@ def dev_playinfo():
             last_play_pic = albumart_url
             now_play = f'{dev_input_now.get()}\t{play_info["artist"]}\t{play_info["album"]}\t{play_info["track"]}'
             if now_play != last_play:
-                print("смена трека ", info_str)
+                # print("смена трека ", info_str)
 
                 try:
                     with open("play_history.txt", "a", errors="replace") as file_out: #encoding="utf8"

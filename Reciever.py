@@ -15,7 +15,7 @@ volume_max = 0
 volume_min = -80.5
 volume_step = 0.5
 volume_calc = 0
-scale_use = True # установка шкалы
+scale_use = True  # установка шкалы
 net_usb_list = ['airplay', 'mc_link', 'server', 'net_radio', 'bluetooth', 'usb'] # что доступно из входов для выбора ресурсов
 chk_file = False # для записи пометки в файле истории проигрывания по кнопке чек
 
@@ -185,10 +185,11 @@ def btn_input_list_clc():
         max_line = 8
         last_max_line = 0
         list_info = []
+        responce = cod_error
         btn_sel.config(state=tk.DISABLED)
         btn_can.configure(state=tk.DISABLED)
         while (max_line - index_Start_in_list) >= 0:
-            responce = device_connect(f"/v2/netusb/getListInfo?input=server&index={index_Start_in_list}&size=8&lang=ru")
+            responce = device_connect(f"/v2/netusb/getListInfo?input={dev_input_now.get()}&index={index_Start_in_list}&size=8&lang=ru")
             if responce != cod_error:
                 index_Start_in_list += 8
                 max_line = responce.json()["max_line"]
@@ -260,11 +261,18 @@ def btn_input_list_clc():
                 spisok.itemconfigure(i, background='#f0f0ff')
             else:
                 spisok.itemconfigure(i, background="white")
+        responce = device_connect("/v2/netusb/getRecentInfo").json()
+        last_song = 0
+        if responce != cod_error:
+            try:
+                last_song = choices.index(responce['recent_info'][0]['text'])
+            except ValueError:
+                last_song = 0
         spisok.selection_clear(0, len(choices))
-        spisok.select_set(0)
-        spisok.see(0)
-        spisok.index(0)
-        spisok.activate(0)
+        spisok.select_set(last_song)
+        spisok.see(last_song)
+        spisok.index(last_song)
+        spisok.activate(last_song)
         if menu_level == 0:
             btn_can.configure(text="Закрыть")
         else:
@@ -330,8 +338,8 @@ def btn_input_list_clc():
     frame_spisok.grid(column=0, row=0, sticky="nesw", padx=3)
     frame_spisok.columnconfigure(0, weight=1)
     # frame_spisok.rowconfigure(0, weight=1)
-    choices = "" # [el['text'] for el in full_list]
-    choicesvar = tk.StringVar(value=choices)
+    choices = [] # [el['text'] for el in full_list]
+    choicesvar = tk.Variable(value=choices)
     spisok = tk.Listbox(frame_spisok, height=20 , listvariable=choicesvar)
     spisok.grid(column=0, row=0, sticky="nesw")
     vert_scroll = tk.Scrollbar(frame_spisok, orient=tk.VERTICAL, command=spisok.yview)
@@ -632,7 +640,7 @@ def dev_playinfo():
         if responce != cod_error:
             play_info = responce.json()
             playback = play_info["playback"]
-            info_str = f"Вход: {dev_input_now.get()}\n"
+            info_str = f"Вход: {dev_input_now.get()}, состояние: {playback}\n"
             info_str += f'Артист: {play_info["artist"]}\n' if play_info["artist"] != "" else ""
             info_str += f'Альбом: {play_info["album"]}\n' if play_info["album"] != "" else ""
             info_str += f'Трек: {play_info["track"]}\n' if play_info["track"] != "" else ""

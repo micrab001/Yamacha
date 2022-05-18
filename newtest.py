@@ -1,36 +1,11 @@
 import requests
 import pprint
 
-import os
-import tkinter
-from tkinter import ttk
-
-
-
-class FoundAllFiles():
-
-
-
-    f_loc = r'C:\Users\micrab\AppData\Local\Temp\gen_py'
-    all_dir = os.listdir(f_loc)
-    if len(all_dir) != 0:
-        for f in all_dir:
-            if os.path.isfile(f_loc+chr(92)+f):
-                os.remove(f_loc+chr(92)+f)
-            else:
-                rmtree(f_loc+chr(92)+f)
-
-
-
-
-
-
-
-
-
+s = "dkj dkfkdj  jff dk jdkdkfj dkjf kdf.fl.ac"
+print(s.rfind("."))
+print(s[s.rfind("."):])
 
 exit(0)
-
 # import socket
 # comp_ip = socket.gethostbyname(socket.gethostname())
 # localnet = comp_ip[0:comp_ip.rfind(".")-len(comp_ip)+1]
@@ -76,14 +51,15 @@ link = "http://192.168.50.156/YamahaExtendedControl"
 #     "update_data_type": 0
 # }
 #
-# # "power": "standby"
-#"/v2/main/getStatus"
+
 
 # link += "/v2/main/getStatus"
 # link += "/v2/main/setSleep?sleep=0"
-link = link + "/v2/netusb/getListInfo?input=server&index=0&size=8&lang=ru"
+# link = link + "/v2/netusb/getListInfo?input=server&index=0&size=8&lang=ru"
+# link = link + "/v2/netusb/getListInfo?input=net_radio&index=0&size=8&lang=ru"
 # link = link + "/v2/netusb/setListControl?list_id=main&type=select&index=0"
-# link += "/v2/netusb/getRecentInfo"
+link += "/v2/netusb/getRecentInfo"
+# link += "/v2/netusb/getPlayInfo"
 
 # "fast_reverse_start" / "fast_reverse_end" / "fast_forward_start" /
 # "fast_forward_end"
@@ -94,6 +70,20 @@ if responce.status_code == 200:
     pprint.pprint(responce.json())
 else:
     print("Сбой, ответ: ", responce)
+
+rez = responce.json()
+last_song = rez['recent_info'][0]['text']
+spisok = [ el['text'] for el in rez['recent_info'] ]
+
+try:
+    print(spisok.index(last_song))
+except ValueError:
+    print("не найдено")
+
+
+print(last_song)
+pprint.pprint(spisok)
+
 
 
 # http://{host}/YamahaExtendedControl/v1/netusb/setListControl?list_id=main&type=select&index=1

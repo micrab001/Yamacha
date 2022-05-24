@@ -6,6 +6,8 @@ import requests
 import datetime
 from io import BytesIO
 from PIL import Image, ImageTk
+import os
+from random import choice
 
 import json
 import pprint
@@ -18,6 +20,8 @@ volume_calc = 0
 scale_use = True  # установка шкалы
 net_usb_list = ['airplay', 'mc_link', 'server', 'net_radio', 'bluetooth', 'usb'] # что доступно из входов для выбора ресурсов
 chk_file = False # для записи пометки в файле истории проигрывания по кнопке чек
+aud_files = ['.wav', '.mp3', '.m4a', '.sfv', '.m4v', '.flac', '.wma', '.aiff', '.aif', '.aac', '.mp4', '.ogg']
+dirs_w_audio = ('Z:/Аудио/Музыка', 'Z:/Аудио/Музыка 2')
 
 try:
     with open("play_history.txt") as his_file:
@@ -156,9 +160,6 @@ btn_volume_up.grid(row = 1, column = 4, sticky="nesw", padx = 3)
 btn_volume_mute = tk.Button(frame_volume, command=btn_volume_mute_clc)
 btn_volume_mute.grid(row = 1, column = 2, sticky="nesw", padx = 3)
 level_row += loc_frame_row
-
-
-
 
 
 def scale_image(picture_in, width=200, height=200):
@@ -551,13 +552,84 @@ def btn_chk_clc():
     if dev_input_now.get() in net_usb_list:
         chk_file = True
 
+def btn_rnd_clc():
+    if dev_input_now.get() != "server":
+        messagebox.showinfo(title="Выберите server",
+                            message=f"Кнопка работает только для проигрывания с сервера HMS120 и подключенного диска Z с музыкой")
+        return
+    list_all_dirs = []
+    for dirs in dirs_w_audio:
+        tmp = os.walk(os.path.normpath(dirs))
+        for el in tmp:
+            tmp_path = os.path.normpath(el[0])
+            tmp_path = os.path.normcase(tmp_path)
+            for file in el[2]:
+                tmp_file = file.lower()
+                if tmp_file[tmp_file.rfind("."):] in aud_files:
+                    list_all_dirs.append(tmp_path)
+                    break
+    if len(list_all_dirs) > 0:
+        responce = device_connect("/v2/netusb/getListInfo?input=server&index=0&size=8&lang=ru")
+        if responce != cod_error:
+            while responce.json()['menu_layer'] != 0:
+                device_connect("/v2/netusb/setListControl?list_id=main&type=return")
+                responce = device_connect("/v2/netusb/getListInfo?input=server&index=0&size=8&lang=ru")
+        last_path = choice(list_all_dirs)
+        try:
+            with open("play_history_dir.txt", "a", errors="replace") as file_out_dir:  # encoding="utf8"
+                file_out_dir.write(datetime.datetime.now().strftime("%d-%m-%Y\t%H:%M:%S\t") + last_path + "\n")
+        except PermissionError:
+            messagebox.showinfo(title="Ошибка записи истории каталогов!", message=f"Закройте файл play_history_dir.txt! Каталог \n{last_path}\n не записан")
+
+        tmp_path = os.path.split(last_path)
+        tmp_p_list = []
+        while tmp_path[1] != "аудио":
+            tmp_p_list.append(tmp_path[1])
+            tmp_path = os.path.split(tmp_path[0])
+        tmp_p_list.reverse()
+        list_next_point = ['hms120', 'каталоги медиа-ресурсов', 'аудио'] + tmp_p_list
+        for i in range(len(list_next_point)):
+            index_start = 0
+            max_ln = responce.json()['max_line']
+            responce = cod_error
+            indx_find = -1
+            indx_now = 0
+            attr_now = []
+            while (max_ln - index_start) >= 0:
+                responce = device_connect(f"/v2/netusb/getListInfo?input=server&index={index_start}&size=8&lang=ru")
+                if responce != cod_error:
+                    for j in range(len(responce.json()["list_info"])):
+                        if responce.json()["list_info"][j]['text'].lower() == list_next_point[i]:
+                            indx_find = indx_now
+                            attr_now = dec_in_doble(responce.json()["list_info"][j]['attribute'])
+                            break
+                        else:
+                            indx_now += 1
+                if indx_find == indx_now:
+                    break
+                index_start += 8
+            if indx_find != -1 and attr_now[1] == 1:
+                device_connect(f"/v2/netusb/setListControl?list_id=main&type=select&index={indx_find}")
+                responce = device_connect("/v2/netusb/getListInfo?input=server&index=0&size=8&lang=ru")
+            else:
+                messagebox.showinfo(title="Ошибка поиска каталогов!",
+                                    message=f"не найдено {list_next_point[i]} в каталоге \n{last_path}")
+                return
+        btn_input_list_clc()
+    else:
+        messagebox.showinfo(title="Проблемы с сервером", message="Не могу найти папку с музыкой")
+
+
 loc_frame_row = 1
-loc_frame_col = 2
+loc_frame_col = 3
 frame_func = ttk.Labelframe(wind, text='Функции:', width=min_size_w-10)
 frame_func.columnconfigure(0, minsize = (min_size_w-10)//loc_frame_col, weight=1)
+frame_func.columnconfigure(1, minsize = (min_size_w-10)//loc_frame_col, weight=1)
 frame_func.grid(column=0, row=level_row, sticky="nesw", padx=3)
 btn_chk = tk.Button(frame_func, text="Чек", command=btn_chk_clc)
-btn_chk.grid(row=0, column=0, sticky="nsw", padx=3)
+btn_chk.grid(row=0, column=0, sticky="nsew", padx=3)
+btn_rnd = tk.Button(frame_func, text="RndDir", command=btn_rnd_clc)
+btn_rnd.grid(row=0, column=1, sticky="nsew", padx=3)
 level_row += loc_frame_row
 
 
@@ -676,7 +748,7 @@ def dev_playinfo():
                         file_out.write(datetime.datetime.now().strftime("%d-%m-%Y\t%H:%M:%S\t")+now_play+"\t\n")
                         last_play = now_play
                 except PermissionError:
-                    messagebox.showinfo(title="Ошибка записи истории!", message=f"Закройте файл play_history.txt!")
+                    messagebox.showinfo(title="Ошибка записи истории!", message="Закройте файл play_history.txt!")
                 # except UnicodeEncodeError:
     else:
         btn_input_list.config(state=tk.DISABLED)

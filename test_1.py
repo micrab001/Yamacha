@@ -27,6 +27,7 @@ def list_files_from_server():
         aud_files = ['.wav', '.mp3', '.m4a', '.sfv', '.m4v', '.flac', '.wma', '.aiff', '.aif', '.aac', '.mp4','.ogg']
         nonlocal list_dir_data
         list_all_files = []
+        list_all_dirs = set()
         if find_subdirs.get():
             pass
             # тут надо убрать подкаталоги, если они заданы при просмотре с поддирректориями и пересекаются
@@ -35,25 +36,30 @@ def list_files_from_server():
 
 
 
-        # if find_subdirs.get():
-        #     tmp = os.walk(list_dir_data_user.get()[list_dir.curselection()[0]])
-        #     for el in tmp:
-        #         tmp_path = os.path.normpath(el[0])
-        #         tmp_path = os.path.normcase(tmp_path)
-        #         for file in el[2]:
-        #             tmp_file = file.lower()
-        #             if tmp_file[tmp_file.rfind("."):] in aud_files:
-        #                 list_all_files.append((tmp_path, tmp_file))
-        #         # print(el)
-        #         # print(os.path.normpath(el[0]))
-        #
-        #
-        #     pprint.pprint(list_all_files)
-        # else:
-        #     tmp = os.listdir(list_dir_data_user.get()[list_dir.curselection()[0]])
-        #
-        #
-        #     pprint.pprint(os.listdir(list_dir_data_user.get()[list_dir.curselection()[0]]))
+        if find_subdirs.get():
+            for dirs in list_dir_data_user.get():
+                tmp = os.walk(dirs)
+                for el in tmp:
+                    tmp_path = os.path.normpath(el[0])
+                    tmp_path = os.path.normcase(tmp_path)
+                    for file in el[2]:
+                        tmp_file = file.lower()
+                        if tmp_file[tmp_file.rfind("."):] in aud_files:
+                            list_all_files.append((tmp_path, tmp_file))
+                            list_all_dirs.add(tmp_path)
+                            break
+                    # print(el)
+                    # print(os.path.normpath(el[0]))
+
+
+            # pprint.pprint(list_all_files)
+            print("***********")
+            pprint.pp(list_all_dirs)
+        else:
+            tmp = os.listdir(list_dir_data_user.get()[list_dir.curselection()[0]])
+
+
+            pprint.pprint(os.listdir(list_dir_data_user.get()[list_dir.curselection()[0]]))
 
 
     win_list_dir = tk.Tk()

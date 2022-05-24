@@ -1,11 +1,9 @@
 import requests
 import pprint
 
-s = "dkj dkfkdj  jff dk jdkdkfj dkjf kdf.fl.ac"
-print(s.rfind("."))
-print(s[s.rfind("."):])
 
-exit(0)
+# exit(0)
+
 # import socket
 # comp_ip = socket.gethostbyname(socket.gethostname())
 # localnet = comp_ip[0:comp_ip.rfind(".")-len(comp_ip)+1]
@@ -58,12 +56,12 @@ link = "http://192.168.50.156/YamahaExtendedControl"
 # link = link + "/v2/netusb/getListInfo?input=server&index=0&size=8&lang=ru"
 # link = link + "/v2/netusb/getListInfo?input=net_radio&index=0&size=8&lang=ru"
 # link = link + "/v2/netusb/setListControl?list_id=main&type=select&index=0"
-link += "/v2/netusb/getRecentInfo"
-# link += "/v2/netusb/getPlayInfo"
+# link += "/v2/netusb/getRecentInfo"
+link += "/v2/netusb/getPlayInfo"
 
 # "fast_reverse_start" / "fast_reverse_end" / "fast_forward_start" /
 # "fast_forward_end"
-
+# ['HMS120', 'Каталоги медиа-ресурсов', 'Аудио', далее каталоги]
 
 responce = requests.get(link, timeout=10)
 if responce.status_code == 200:
@@ -71,18 +69,18 @@ if responce.status_code == 200:
 else:
     print("Сбой, ответ: ", responce)
 
-rez = responce.json()
-last_song = rez['recent_info'][0]['text']
-spisok = [ el['text'] for el in rez['recent_info'] ]
-
-try:
-    print(spisok.index(last_song))
-except ValueError:
-    print("не найдено")
-
-
-print(last_song)
-pprint.pprint(spisok)
+# rez = responce.json()
+# last_song = rez['recent_info'][0]['text']
+# spisok = [ el['text'] for el in rez['recent_info'] ]
+#
+# try:
+#     print(spisok.index(last_song))
+# except ValueError:
+#     print("не найдено")
+#
+#
+# print(last_song)
+# pprint.pprint(spisok)
 
 
 

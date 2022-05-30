@@ -9,8 +9,8 @@ from PIL import Image, ImageTk
 import os
 from random import choice
 
-import json
-import pprint
+# import json
+# import pprint
 
 cod_error = "error"
 volume_max = 0
@@ -22,6 +22,7 @@ net_usb_list = ['airplay', 'mc_link', 'server', 'net_radio', 'bluetooth', 'usb']
 chk_file = False # для записи пометки в файле истории проигрывания по кнопке чек
 aud_files = ['.wav', '.mp3', '.m4a', '.sfv', '.m4v', '.flac', '.wma', '.aiff', '.aif', '.aac', '.mp4', '.ogg']
 dirs_w_audio = ('Z:/Аудио/Музыка', 'Z:/Аудио/Музыка 2')
+last_play_pic = ""
 
 try:
     with open("play_history.txt") as his_file:
@@ -31,7 +32,15 @@ try:
         last_play = last_play[20:last_play.rfind("\t")]
 except FileNotFoundError:
     last_play = ""
-last_play_pic = ""
+
+try:
+    with open("play_history_dir.txt") as his_file:
+        for line in his_file:
+            pass
+        last_path = line
+        last_path = last_path[20:-1]
+except FileNotFoundError:
+    last_path = ""
 
 dev_url = "http://192.168.50.156"
 
@@ -200,11 +209,12 @@ def btn_input_list_clc():
                 tmp_index = index_Start_in_list if (index_Start_in_list+8 <= max_line) else max_line
                 process_bar.configure(value=tmp_index)
                 process_bar.update()
-
                 for i in range(len(responce.json()["list_info"])):
                     list_info_tmp = responce.json()["list_info"][i]
                     list_info_tmp["attribute"] = dec_in_doble(list_info_tmp["attribute"])
                     list_info.append(list_info_tmp)
+            else:
+                break
         if responce != cod_error:
             menu_name = responce.json()["menu_name"]
             menu_layer = responce.json()["menu_layer"]
@@ -553,6 +563,7 @@ def btn_chk_clc():
         chk_file = True
 
 def btn_rnd_clc():
+    global last_path
     if dev_input_now.get() != "server":
         messagebox.showinfo(title="Выберите server",
                             message=f"Кнопка работает только для проигрывания с сервера HMS120 и подключенного диска Z с музыкой")
@@ -571,8 +582,9 @@ def btn_rnd_clc():
     if len(list_all_dirs) > 0:
         responce = device_connect("/v2/netusb/getListInfo?input=server&index=0&size=8&lang=ru")
         if responce != cod_error:
-            while responce.json()['menu_layer'] != 0:
-                device_connect("/v2/netusb/setListControl?list_id=main&type=return")
+            while responce.json()['menu_layer'] != 0 and responce != cod_error:
+                if device_connect("/v2/netusb/setListControl?list_id=main&type=return") == cod_error:
+                    return
                 responce = device_connect("/v2/netusb/getListInfo?input=server&index=0&size=8&lang=ru")
         last_path = choice(list_all_dirs)
         try:
@@ -583,7 +595,7 @@ def btn_rnd_clc():
 
         tmp_path = os.path.split(last_path)
         tmp_p_list = []
-        while tmp_path[1] != "аудио":
+        while tmp_path[1] != "аудио" and len(tmp_path[0]) > 3:
             tmp_p_list.append(tmp_path[1])
             tmp_path = os.path.split(tmp_path[0])
         tmp_p_list.reverse()
@@ -605,6 +617,8 @@ def btn_rnd_clc():
                             break
                         else:
                             indx_now += 1
+                else:
+                    break
                 if indx_find == indx_now:
                     break
                 index_start += 8
@@ -620,16 +634,22 @@ def btn_rnd_clc():
         messagebox.showinfo(title="Проблемы с сервером", message="Не могу найти папку с музыкой")
 
 
+def btn_lastdir_clc():
+    global last_path
+    messagebox.showinfo(title="Информация", message=f"Последний автоматически выбранный каталог:\n{last_path}")
+
 loc_frame_row = 1
 loc_frame_col = 3
 frame_func = ttk.Labelframe(wind, text='Функции:', width=min_size_w-10)
-frame_func.columnconfigure(0, minsize = (min_size_w-10)//loc_frame_col, weight=1)
-frame_func.columnconfigure(1, minsize = (min_size_w-10)//loc_frame_col, weight=1)
+for i in range(loc_frame_col):
+    frame_func.columnconfigure(i, minsize = (min_size_w-10)//loc_frame_col, weight=1)
 frame_func.grid(column=0, row=level_row, sticky="nesw", padx=3)
 btn_chk = tk.Button(frame_func, text="Чек", command=btn_chk_clc)
 btn_chk.grid(row=0, column=0, sticky="nsew", padx=3)
 btn_rnd = tk.Button(frame_func, text="RndDir", command=btn_rnd_clc)
 btn_rnd.grid(row=0, column=1, sticky="nsew", padx=3)
+btn_lastdir = tk.Button(frame_func, text="LastDir", command=btn_lastdir_clc)
+btn_lastdir.grid(row=0, column=2, sticky="nsew", padx=3)
 level_row += loc_frame_row
 
 
@@ -751,6 +771,7 @@ def dev_playinfo():
                     messagebox.showinfo(title="Ошибка записи истории!", message="Закройте файл play_history.txt!")
                 # except UnicodeEncodeError:
     else:
+        playback = "stop"
         btn_input_list.config(state=tk.DISABLED)
         text_info.set("")
 

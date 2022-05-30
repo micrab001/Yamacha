@@ -1,7 +1,18 @@
 import requests
 import pprint
-
-
+import os
+#
+# last_path = "z:\\аhудио\\музыка\\01 неразобранное\\elton john discography\\original editions\\1984 - breaking hearts [1984 rocket 822 088-2] germany"
+# i= 0
+# tmp_path = os.path.split(last_path)
+# tmp_p_list = []
+# while tmp_path[1] != "аудио" and len(tmp_path[0]) > 3:
+#     tmp_p_list.append(tmp_path[1])
+#     tmp_path = os.path.split(tmp_path[0])
+#     i += 1
+# print(tmp_path)
+# print(tmp_p_list)
+# print(len(tmp_path[0]))
 # exit(0)
 
 # import socket

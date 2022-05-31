@@ -756,7 +756,7 @@ def dev_playinfo():
                 picture_play.configure(image="")
             last_play_pic = albumart_url
             now_play = f'{dev_input_now.get()}\t{play_info["artist"]}\t{play_info["album"]}\t{play_info["track"]}'
-            if now_play != last_play:
+            if now_play != last_play and now_play != "\t\t\t":
                 # print("смена трека ", info_str)
 
                 try:

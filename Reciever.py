@@ -9,6 +9,14 @@ from PIL import Image, ImageTk
 import os
 from random import choice
 
+# эти три строки позволяют показывать свою иконку при запуске программы
+# когда запускается приложение, Windows смотрит на исполняемый файл и пытается угадать, к какой application group оно принадлежит.
+# По умолчанию все скрипты Python сгруппированы в одну и ту же группу "Python" , поэтому будет отображаться значок Python.
+# # Чтобы это не происходило, нам нужно предоставить Windows другой идентификатор приложения.
+import ctypes
+myappid = 'micrab.remote.yamacha.version01'
+ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+
 # import json
 # import pprint
 
@@ -337,6 +345,8 @@ def btn_input_list_clc():
     wind_list.title("Выбор ресурса для проигрывания")
     wind_list.geometry(f'{min_size_w+50}x{min_size_h-20}+{wind.winfo_x() + 10}+{wind.winfo_y() + 10}')  # положение окна на 10 точек смещения от основного окна
     wind_list.minsize(min_size_w+50, min_size_h-20)
+    wind_list_photo = tk.PhotoImage(file="server.png")
+    wind_list.iconphoto(False, wind_list_photo)
     wind_name = ""
     full_list = []
     menu_level = 0
@@ -756,9 +766,8 @@ def dev_playinfo():
                 picture_play.configure(image="")
             last_play_pic = albumart_url
             now_play = f'{dev_input_now.get()}\t{play_info["artist"]}\t{play_info["album"]}\t{play_info["track"]}'
-            if now_play != last_play and now_play != "\t\t\t":
+            if now_play != last_play and (now_play != "\t\t\t" or now_play != "" or last_play != ""):
                 # print("смена трека ", info_str)
-
                 try:
                     with open("play_history.txt", "a", errors="replace") as file_out: #encoding="utf8"
                         if chk_file and last_play != "":

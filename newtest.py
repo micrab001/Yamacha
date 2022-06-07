@@ -1,6 +1,26 @@
 import requests
 import pprint
 import os
+import pandas as pd
+from datetime import date, timedelta
+
+
+start_data_str = date.fromisoformat("2022-04-01")
+start_data = date(2022, 4, 15)
+end_data = date(2022, 4, 30)
+
+calc_days = (end_data - start_data).days
+
+end_data = end_data + timedelta(days=1)
+
+print(calc_days)
+for i in range(calc_days+1):
+    day_start = start_data.strftime("%Y-%m-%d")
+    day_end = (start_data + timedelta(days=1)).strftime("%Y-%m-%d")
+    print(day_start, day_end)
+    start_data += timedelta(days=1)
+
+exit(0)
 #
 # last_path = "z:\\аhудио\\музыка\\01 неразобранное\\elton john discography\\original editions\\1984 - breaking hearts [1984 rocket 822 088-2] germany"
 # i= 0

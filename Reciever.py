@@ -572,6 +572,52 @@ def btn_chk_clc():
     if dev_input_now.get() in net_usb_list:
         chk_file = True
 
+def set_dir_on_device(last_path):
+    """установка на устройстве каталога, как текущего"""
+    responce = device_connect("/v2/netusb/getListInfo?input=server&index=0&size=8&lang=ru")
+    if responce != cod_error:
+        while responce.json()['menu_layer'] != 0 and responce != cod_error:
+            if device_connect("/v2/netusb/setListControl?list_id=main&type=return") == cod_error:
+                return
+            responce = device_connect("/v2/netusb/getListInfo?input=server&index=0&size=8&lang=ru")
+    tmp_path = os.path.split(last_path)
+    tmp_p_list = []
+    while tmp_path[1] != "аудио" and len(tmp_path[0]) > 3:
+        tmp_p_list.append(tmp_path[1])
+        tmp_path = os.path.split(tmp_path[0])
+    tmp_p_list.reverse()
+    list_next_point = ['hms120', 'каталоги медиа-ресурсов', 'аудио'] + tmp_p_list
+    for i in range(len(list_next_point)):
+        index_start = 0
+        max_ln = responce.json()['max_line']
+        responce = cod_error
+        indx_find = -1
+        indx_now = 0
+        attr_now = []
+        while (max_ln - index_start) >= 0:
+            responce = device_connect(f"/v2/netusb/getListInfo?input=server&index={index_start}&size=8&lang=ru")
+            if responce != cod_error:
+                for j in range(len(responce.json()["list_info"])):
+                    if responce.json()["list_info"][j]['text'].lower() == list_next_point[i]:
+                        indx_find = indx_now
+                        attr_now = dec_in_doble(responce.json()["list_info"][j]['attribute'])
+                        break
+                    else:
+                        indx_now += 1
+            else:
+                break
+            if indx_find == indx_now:
+                break
+            index_start += 8
+        if indx_find != -1 and attr_now[1] == 1:
+            device_connect(f"/v2/netusb/setListControl?list_id=main&type=select&index={indx_find}")
+            responce = device_connect("/v2/netusb/getListInfo?input=server&index=0&size=8&lang=ru")
+        else:
+            messagebox.showinfo(title="Ошибка поиска каталогов!",
+                                message=f"не найдено {list_next_point[i]} в каталоге \n{last_path}")
+            return
+
+
 def btn_rnd_clc():
     global last_path
     if dev_input_now.get() != "server":
@@ -590,55 +636,13 @@ def btn_rnd_clc():
                     list_all_dirs.append(tmp_path)
                     break
     if len(list_all_dirs) > 0:
-        responce = device_connect("/v2/netusb/getListInfo?input=server&index=0&size=8&lang=ru")
-        if responce != cod_error:
-            while responce.json()['menu_layer'] != 0 and responce != cod_error:
-                if device_connect("/v2/netusb/setListControl?list_id=main&type=return") == cod_error:
-                    return
-                responce = device_connect("/v2/netusb/getListInfo?input=server&index=0&size=8&lang=ru")
         last_path = choice(list_all_dirs)
         try:
             with open("play_history_dir.txt", "a", errors="replace") as file_out_dir:  # encoding="utf8"
                 file_out_dir.write(datetime.datetime.now().strftime("%d-%m-%Y\t%H:%M:%S\t") + last_path + "\n")
         except PermissionError:
             messagebox.showinfo(title="Ошибка записи истории каталогов!", message=f"Закройте файл play_history_dir.txt! Каталог \n{last_path}\n не записан")
-
-        tmp_path = os.path.split(last_path)
-        tmp_p_list = []
-        while tmp_path[1] != "аудио" and len(tmp_path[0]) > 3:
-            tmp_p_list.append(tmp_path[1])
-            tmp_path = os.path.split(tmp_path[0])
-        tmp_p_list.reverse()
-        list_next_point = ['hms120', 'каталоги медиа-ресурсов', 'аудио'] + tmp_p_list
-        for i in range(len(list_next_point)):
-            index_start = 0
-            max_ln = responce.json()['max_line']
-            responce = cod_error
-            indx_find = -1
-            indx_now = 0
-            attr_now = []
-            while (max_ln - index_start) >= 0:
-                responce = device_connect(f"/v2/netusb/getListInfo?input=server&index={index_start}&size=8&lang=ru")
-                if responce != cod_error:
-                    for j in range(len(responce.json()["list_info"])):
-                        if responce.json()["list_info"][j]['text'].lower() == list_next_point[i]:
-                            indx_find = indx_now
-                            attr_now = dec_in_doble(responce.json()["list_info"][j]['attribute'])
-                            break
-                        else:
-                            indx_now += 1
-                else:
-                    break
-                if indx_find == indx_now:
-                    break
-                index_start += 8
-            if indx_find != -1 and attr_now[1] == 1:
-                device_connect(f"/v2/netusb/setListControl?list_id=main&type=select&index={indx_find}")
-                responce = device_connect("/v2/netusb/getListInfo?input=server&index=0&size=8&lang=ru")
-            else:
-                messagebox.showinfo(title="Ошибка поиска каталогов!",
-                                    message=f"не найдено {list_next_point[i]} в каталоге \n{last_path}")
-                return
+        set_dir_on_device(last_path)
         btn_input_list_clc()
     else:
         messagebox.showinfo(title="Проблемы с сервером", message="Не могу найти папку с музыкой")
@@ -646,7 +650,16 @@ def btn_rnd_clc():
 
 def btn_lastdir_clc():
     global last_path
-    messagebox.showinfo(title="Информация", message=f"Последний автоматически выбранный каталог:\n{last_path}")
+    if messagebox.askyesno(message=f"Последний автоматически выбранный каталог:\n{last_path}",
+                            detail="\nУстановить этот каталог на устройстве как текущий?",
+                            icon='question', title='Выбор каталога на устройстве'):
+        if dev_input_now.get() != "server":
+            messagebox.showinfo(title="Информация",
+                                message=f"Установка каталога работает только для проигрывания с сервера HMS120")
+            return
+        set_dir_on_device(last_path)
+        btn_input_list_clc()
+
 
 loc_frame_row = 1
 loc_frame_col = 3

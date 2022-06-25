@@ -1,25 +1,33 @@
 import requests
 import pprint
 import os
+from collections import Counter
 import pandas as pd
-from datetime import date, timedelta
+from tkinter import messagebox
 
+tovar_df = pd.read_excel("C:\\Vrem\\Python10\\API OFD\\Апрель cheki_tovar.xlsx")
 
-start_data_str = date.fromisoformat("2022-04-01")
-start_data = date(2022, 4, 15)
-end_data = date(2022, 4, 30)
+tovar_ser = tovar_df["name"].apply(lambda x: x.split(" "))
+tovar_art = []
+tovar_w_list = []
 
-calc_days = (end_data - start_data).days
+for i in range(len(tovar_ser)):
+    tmp_list = []
+    for el in tovar_ser.iloc[i]:
+        if el != " " and el != "":
+            tmp_list.append(el)
+    tovar_art.append(tmp_list[0])
+    tovar_w_list += tmp_list[1:]
 
-end_data = end_data + timedelta(days=1)
+tovar_df["Articul"] = tovar_art
+tovar_df.to_excel("tovar_n.xlsx", sheet_name="tovar", index=False)
 
-print(calc_days)
-for i in range(calc_days+1):
-    day_start = start_data.strftime("%Y-%m-%d")
-    day_end = (start_data + timedelta(days=1)).strftime("%Y-%m-%d")
-    print(day_start, day_end)
-    start_data += timedelta(days=1)
+print(len(tovar_art))
+print(len(tovar_w_list))
+print(tovar_w_list[0:20])
 
+print(len(set(tovar_art)))
+print(len(set(tovar_w_list)))
 exit(0)
 #
 # last_path = "z:\\аhудио\\музыка\\01 неразобранное\\elton john discography\\original editions\\1984 - breaking hearts [1984 rocket 822 088-2] germany"

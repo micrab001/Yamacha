@@ -5,29 +5,13 @@ from collections import Counter
 import pandas as pd
 from tkinter import messagebox
 
-tovar_df = pd.read_excel("C:\\Vrem\\Python10\\API OFD\\Апрель cheki_tovar.xlsx")
+# kkt_df = pd.read_excel("C:\\Vrem\\Python10\\API OFD\\cheki.xlsx")
+x = 0
+for i in range(20):
+    x += i
+    print(x)
 
-tovar_ser = tovar_df["name"].apply(lambda x: x.split(" "))
-tovar_art = []
-tovar_w_list = []
 
-for i in range(len(tovar_ser)):
-    tmp_list = []
-    for el in tovar_ser.iloc[i]:
-        if el != " " and el != "":
-            tmp_list.append(el)
-    tovar_art.append(tmp_list[0])
-    tovar_w_list += tmp_list[1:]
-
-tovar_df["Articul"] = tovar_art
-tovar_df.to_excel("tovar_n.xlsx", sheet_name="tovar", index=False)
-
-print(len(tovar_art))
-print(len(tovar_w_list))
-print(tovar_w_list[0:20])
-
-print(len(set(tovar_art)))
-print(len(set(tovar_w_list)))
 exit(0)
 #
 # last_path = "z:\\аhудио\\музыка\\01 неразобранное\\elton john discography\\original editions\\1984 - breaking hearts [1984 rocket 822 088-2] germany"

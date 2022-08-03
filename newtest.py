@@ -1,111 +1,168 @@
-import requests
-import pprint
-import os
-from collections import Counter
-import pandas as pd
-from tkinter import messagebox
+import math
+import numpy as np
+# -------------------------------------------------------------------------------------------
+import matplotlib
+import matplotlib.pyplot as plt
+from matplotlib.pylab import mpl
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk  # NavigationToolbar2TkAgg
+# ------------------------------------------------------------------------------------------
+import tkinter as tk
 
-# kkt_df = pd.read_excel("C:\\Vrem\\Python10\\API OFD\\cheki.xlsx")
-x = 0
-for i in range(20):
-    x += i
-    print(x)
+# ------------------------------------------------------------------------------------------
 
 
-exit(0)
+# mpl.rcParams['font.sans-serif'] = ['SimHei']  # Китайский дисплей
+# mpl.rcParams['axes.unicode_minus'] = False  # отображение отрицательного знака
+
+
+class From:
+    def __init__(self):
+        self.root = tk.Tk()  # Создать основную форму
+        self.canvas = tk.Canvas()  # Создать холст для отображения графики
+        self.figure = self.create_matplotlib()  # Возвращает объект фигуры фигуры, нарисованной matplotlib
+        self.create_form(self.figure)  # Отображение рисунка над формой tkinter
+        self.root.mainloop()
+
+    def create_matplotlib(self):
+        # Создание рисованного объекта f
+        f = plt.figure(num=2, figsize=(16, 12), dpi=80, facecolor="pink", edgecolor='green', frameon=True)
+        # Создать субкартинку
+        fig1 = plt.subplot(1, 1, 1)
+
+        x = np.arange(0, 2 * np.pi, 0.1)
+        y1 = np.sin(x)
+        y2 = np.cos(x)
+
+        line1, = fig1.plot(x, y1, color='red', linewidth=3, linestyle='-')  # Рисовать первую строку
+
+        line2, = fig1.plot(x, y2)
+        plt.setp(line2, color='black', linewidth=8, linestyle='-', alpha=0.3)  # вторая строка
+
+        fig1.set_title("Это первое изображение", loc = 'center', pad = 20, fontsize = 'xx-large', color = 'red')  # Установить название
+        line1.set_label("Синусоида")  # Определить легенду
+        fig1.legend(['Sine', 'Cosine'], loc='upper left', facecolor='green', frameon=True, shadow=True, framealpha=0.5,
+                    fontsize='xx-large')
+
+        fig1.set_xlabel('abscissa')  # Определить заголовок оси
+        fig1.set_ylabel("ордината")
+        fig1.set_yticks([-1, -1 / 2, 0, 1 / 2, 1])  # Установить масштаб координатной оси
+        fig1.grid(which='major', axis='x', color='r', linestyle='-', linewidth=2)  # сетка
+
+        return f
+
+
+    def create_form(self, figure):
+        # Отображение нарисованной графики в окне tkinter
+        self.canvas = FigureCanvasTkAgg(figure, self.root)
+        self.canvas.draw()  # В предыдущей версии использовался метод show (). После matplotlib 2.2 больше не рекомендуется использовать show () вместо draw, но использование show не сообщит об ошибке и отобразит предупреждение.
+
+
+        self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
+
+        # Отображение панели инструментов навигации, нарисованной matplotlib в окне tkinter
+        toolbar = NavigationToolbar2Tk(self.canvas,
+                                       self.root)  # matplotlib версии 2.2 рекомендуется использовать NavigationToolbar2Tk, если вы используете NavigationToolbar2TkAgg предупредит
+        toolbar.update()
+        self.canvas._tkcanvas.pack(side=tk.TOP, fill=tk.BOTH, expand=1)
+
+if __name__ == "__main__":
+    form = From()
+
+
+
+# пример программы
+# from tkinter import *
+# import matplotlib.pyplot as plt
+# from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+# root = Tk()
+# root.geometry('600x500+10+10')
 #
-# last_path = "z:\\аhудио\\музыка\\01 неразобранное\\elton john discography\\original editions\\1984 - breaking hearts [1984 rocket 822 088-2] germany"
-# i= 0
-# tmp_path = os.path.split(last_path)
-# tmp_p_list = []
-# while tmp_path[1] != "аудио" and len(tmp_path[0]) > 3:
-#     tmp_p_list.append(tmp_path[1])
-#     tmp_path = os.path.split(tmp_path[0])
-#     i += 1
-# print(tmp_path)
-# print(tmp_p_list)
-# print(len(tmp_path[0]))
-# exit(0)
-
-# import socket
-# comp_ip = socket.gethostbyname(socket.gethostname())
-# localnet = comp_ip[0:comp_ip.rfind(".")-len(comp_ip)+1]
+# def do_plot(x, y):
+#     [ax[x].clear() for x in range(4)]
+#     ax[1].plot(x,y)
+#     canvas.draw()
 #
-# rez = []
-# # rez1 = []
-# for i in range(1,256):
-#     net_address = f"http://{localnet}{str(i)}"
-#     try:
-#         responce = requests.get(net_address, timeout=(0.01, 1))
-#         print(f"Получение ответа от адреса {net_address} : ", responce)
-#         rez.append(f"Получен ответа от адреса {net_address}: {responce}")
-#         # rez1.append(socket.gethostbyaddr(f"{localnet}{str(i)}"))
-#     except requests.exceptions.ConnectionError:
-#         print(f"Получение ответа от адреса {net_address} : Ошибка! Подключение не установлено")
+# frame1 = Frame(root); frame1.place(x=0, y=0, width=500, height=500)
+# figure = plt.Figure(figsize=(5,5), facecolor='yellow')
+# canvas = FigureCanvasTkAgg(figure, frame1)
+# canvas.get_tk_widget().place(x=0,y=0,width=500,height=500)
+# ax = [figure.add_subplot(2, 2, x+1) for x in range(4)]
 #
-# print(rez)
-# print(rez1)
-
-
-
-import json
+# frame2 = Frame(root); frame2.place(x=500, y=0, width=100, height=400)
+# btplot1 = Button(frame2, text='plot 1', command= lambda: do_plot([0,1,2],[5,3,7]))
+# btplot1.place(x=0, y=50, width=50, height=20)
+# btplot2 = Button(frame2, text='plot 2', command= lambda: do_plot([5,6,7],[3,8,2]))
+# btplot2.place(x=0, y=100, width=50, height=20)
 #
-link = "http://192.168.50.156/YamahaExtendedControl"
-#
-# # link += "/v2/system/getDeviceInfo"
-# getDeviceInfo = {
-#     "response_code": 0,
-#     "model_name": "RX-V485",
-#     "destination": "F",
-#     "device_id": "F086204A289E",
-#     "system_id": "084BED33",
-#     "system_version": 1.78,
-#     "api_version": 2.11,
-#     "netmodule_generation": 2,
-#     "netmodule_version": "1107    ",
-#     "netmodule_checksum": "79DE0042",
-#     "serial_number": "Y219680ZP",
-#     "category_code": 1,
-#     "operation_mode": "normal",
-#     "update_error_code": "00000000",
-#     "net_module_num": 1,
-#     "update_data_type": 0
-# }
-#
+# root.mainloop()
 
 
-# link += "/v2/main/getStatus"
-# link += "/v2/main/setSleep?sleep=0"
-# link = link + "/v2/netusb/getListInfo?input=server&index=0&size=8&lang=ru"
-# link = link + "/v2/netusb/getListInfo?input=net_radio&index=0&size=8&lang=ru"
-# link = link + "/v2/netusb/setListControl?list_id=main&type=select&index=0"
-# link += "/v2/netusb/getRecentInfo"
-link += "/v2/netusb/getPlayInfo"
 
-# "fast_reverse_start" / "fast_reverse_end" / "fast_forward_start" /
-# "fast_forward_end"
-# ['HMS120', 'Каталоги медиа-ресурсов', 'Аудио', далее каталоги]
 
-responce = requests.get(link, timeout=10)
-if responce.status_code == 200:
-    pprint.pprint(responce.json())
-else:
-    print("Сбой, ответ: ", responce)
 
-# rez = responce.json()
-# last_song = rez['recent_info'][0]['text']
-# spisok = [ el['text'] for el in rez['recent_info'] ]
-#
-# try:
-#     print(spisok.index(last_song))
-# except ValueError:
-#     print("не найдено")
+# это другой пример с комментариями
+# from tkinter import *
+# from matplotlib.figure import Figure
+# from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg,
+#                                                NavigationToolbar2Tk)
 #
 #
-# print(last_song)
-# pprint.pprint(spisok)
-
-
-
-# http://{host}/YamahaExtendedControl/v1/netusb/setListControl?list_id=main&type=select&index=1
-
+# # plot function is created for
+# # plotting the graph in
+# # tkinter window
+# def plot():
+#
+#     # the figure that will contain the plot
+#     fig = Figure(figsize=(3, 3),
+#                  dpi=100)
+#
+#     # list of squares
+#     y = [i ** 2 for i in range(101)]
+#
+#     # adding the subplot
+#     plot1 = fig.add_subplot(111)
+#
+#     # plotting the graph
+#     plot1.plot(y)
+#
+#     # creating the Tkinter canvas
+#     # containing the Matplotlib figure
+#     canvas = FigureCanvasTkAgg(fig,
+#                                master=window)
+#     canvas.draw()
+#
+#     # placing the canvas on the Tkinter window
+#     canvas.get_tk_widget().pack()
+#
+#     # creating the Matplotlib toolbar
+#     toolbar = NavigationToolbar2Tk(canvas,
+#                                    window)
+#     toolbar.update()
+#
+#     # placing the toolbar on the Tkinter window
+#     canvas.get_tk_widget().pack()
+#
+#
+# # the main Tkinter window
+# window = Tk()
+#
+# # setting the title
+# window.title("Plotting in Tkinter")
+#
+# # dimensions of the main window
+# window.geometry("500x500")
+#
+# # button that displays the plot
+# plot_button = Button(master=window,
+#                      command=plot,
+#                      height=2,
+#                      width=10,
+#                      text="Plot")
+#
+# # place the button
+# # in main window
+# plot_button.pack()
+#
+# # run the gui
+# window.mainloop()
+#
